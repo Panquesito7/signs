@@ -304,7 +304,9 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 		p2 = p2 - 2
 		sign_pos = wall_sign_positions
 	end
-	if not p2 or p2 > 3 or p2 < 0 then return end
+	if not p2 or p2 > 3 or p2 < 0 then
+		return
+	end
 
 	local sign
 	for _, obj in pairs(minetest.get_objects_inside_radius(pos, 0.5)) do
@@ -319,6 +321,9 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 			vadd(pos, sign_pos[p2][1]), "signs:sign_text")
 	else
 		sign:set_pos(vadd(pos, sign_pos[p2][1]))
+	end
+	if not sign then
+		return
 	end
 
 	-- Serialization longer values may cause a crash
