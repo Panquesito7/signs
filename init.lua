@@ -1,9 +1,9 @@
 local translator = minetest.get_translator
 local S = translator and translator("signs") or function(s) return s end
 
-local vadd = vector.add
 local floor, pi = math.floor, math.pi
-local find = string.find
+local vadd = vector.add
+local objects_inside_radius = minetest.get_objects_inside_radius
 local b = "blank.png"
 
 -- Cyrillic transliteration library
@@ -60,10 +60,6 @@ local wrap_chars = {
 }
 
 local function generate_sign_texture(str)
-	if not str or str == "" then
-		return b
-	end
-
 	local row = 0
 	local texture = "[combine:" .. 16 * 20 .. "x100"
 	local result = {}
@@ -214,7 +210,7 @@ local function place(itemstack, placer, pointed_thing)
 end
 
 local function destruct(pos)
-	for _, obj in pairs(minetest.get_objects_inside_radius(pos, 0.5)) do
+	for _, obj in pairs(objects_inside_radius(pos, 0.5)) do
 		local ent = obj:get_luaentity()
 		if ent and ent.name == "signs:sign_text" then
 			obj:remove()
@@ -225,7 +221,7 @@ end
 local function check_text(pos)
 	local meta = minetest.get_meta(pos)
 	local text = meta:get_string("sign_text")
-	local objects = minetest.get_objects_inside_radius(pos, 0.5)
+	local objects = objects_inside_radius(pos, 0.5)
 
 	if text and text ~= "" then
 		local count = 0
@@ -259,6 +255,12 @@ local function check_text(pos)
 			end
 		end
 	end
+
+	-- Remove old on_construct fs
+	local fs = meta:get_string("formspec")
+	if fs and fs ~= "" then
+		meta:set_string("")
+	end
 end
 
 local function edit_text(pos, _, clicker)
@@ -285,13 +287,12 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 	end
 
 	local text = fields.Dtext
-	local pos = fields.spos
+	local pos = fields.spos and minetest.string_to_pos(fields.spos)
 
 	if not text or not pos then
 		return
 	end
 
-	pos = minetest.string_to_pos(fields.spos)
 	if minetest.is_protected(pos, player:get_player_name()) then
 		return
 	end
@@ -300,7 +301,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 	local p2 = node.param2
 	local sign_pos = sign_positions
 
-	if find(node.name, "wall") then
+	if node.name:find("wall") then
 		p2 = p2 - 2
 		sign_pos = wall_sign_positions
 	end
@@ -309,7 +310,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 	end
 
 	local sign
-	for _, obj in pairs(minetest.get_objects_inside_radius(pos, 0.5)) do
+	for _, obj in pairs(objects_inside_radius(pos, 0.5)) do
 		local ent = obj:get_luaentity()
 		if ent and ent.name == "signs:sign_text" then
 			sign = obj
@@ -326,14 +327,18 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 		return
 	end
 
-	-- Serialization longer values may cause a crash
-	-- because we are serializing the texture too
-	text = text:sub(1, 256)
+	local texture = b
+	if text ~= "" then
+		-- Serialization longer values may cause a crash
+		-- because we are serializing the texture too
+		text = text:sub(1, 256)
 
-	local texture = generate_sign_texture(text)
-	sign:set_properties({
-		textures = {texture, b}
-	})
+		texture = generate_sign_texture(text)
+		sign:set_properties({
+			textures = {texture, b}
+		})
+	end
+
 	sign:set_yaw(sign_pos[p2][2])
 
 	local meta = minetest.get_meta(pos)
