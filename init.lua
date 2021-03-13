@@ -259,7 +259,7 @@ local function check_text(pos)
 	-- Remove old on_construct fs
 	local fs = meta:get_string("formspec")
 	if fs and fs ~= "" then
-		meta:set_string("")
+		meta:set_string("formspec", "")
 	end
 end
 
